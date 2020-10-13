@@ -2,7 +2,7 @@
  Fast Approximate anti aliasing solution for Unity. Mainly created as an experiment.
  
 # Usage
-  Just add the HAA component to a camera
+  Just add the HAA component to a camera and it should already be working in the game view.
   
 # Settings
   
