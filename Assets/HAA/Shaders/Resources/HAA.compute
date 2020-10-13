@@ -1,0 +1,68 @@
+﻿#pragma kernel main
+
+
+Texture2D _Input;
+SamplerState sampler_Input;
+Texture2D _Depth;
+SamplerState sampler_Depth;
+RWTexture2D<float4> Result;
+float _Sharpen;
+float _Strength;
+float _Threshold;
+bool jitter;
+float jitX;
+float jitY;
+int _Supersampling;
+int width;
+int height;
+float inputBorders(float2 id,float depth) {
+	float2 uv = id.xy / float2(width, height);
+	float spDist = _Supersampling*0.001f/_Threshold;
+	float4 sample1 = _Input.SampleLevel(sampler_Input, uv + float2(spDist, 0), 0);
+	float4 sample2 = _Input.SampleLevel(sampler_Input, uv + float2(-spDist, 0), 0);
+	float4 sample3 = _Input.SampleLevel(sampler_Input, uv + float2(0, -spDist), 0);
+	float4 sample4 = _Input.SampleLevel(sampler_Input, uv + float2(0, spDist), 0);
+	float x = length(sample1 - sample2);
+	float y = length(sample4 - sample3);
+	
+		return (abs(x) + abs(y));
+	
+	
+
+	
+}
+[numthreads(8, 8, 1)]
+void main(uint3 groupID : SV_GroupID,uint3 groupThreadID : SV_GroupThreadID,uint groupIndex : SV_GroupIndex,uint3 id : SV_DispatchThreadID)
+{
+
+	float2 uv = id.xy / float2(width, height);
+
+	float spDist =  .0008f * _Strength * _Supersampling;
+	float border = inputBorders(id.xy,1);
+
+	
+		if (border <= 0.0f) {
+			Result[id.xy] = pow(_Input.SampleLevel(sampler_Input, uv, 0), 0.454545);
+		}
+		else {
+			spDist *= border * _Supersampling;
+			if (jitter) {
+				float4 sample = _Input.SampleLevel(sampler_Input, uv + float2(spDist * jitX, spDist * jitY), 0);
+				float4 final = ((sample) * (1 + clamp(border, 0, _Sharpen)));
+				final.rgb = pow(final.rgb, 0.454545);
+				Result[id.xy] = border;
+			}
+			else {
+				float4 sample1 = _Input.SampleLevel(sampler_Input, uv + float2(spDist, 0), 0);
+				float4 sample2 = _Input.SampleLevel(sampler_Input, uv + float2(-spDist, 0), 0);
+				float4 sample3 = _Input.SampleLevel(sampler_Input, uv + float2(0, -spDist), 0);
+				float4 sample4 = _Input.SampleLevel(sampler_Input, uv + float2(0, spDist), 0);
+				float4 final = ((sample1 + sample2 + sample3 + sample4) / 4) * (1 + clamp(border, 0, _Sharpen));
+				final.rgb = pow(final.rgb, 0.454545);
+				Result[id.xy] = final;
+			}
+		}
+	
+	
+
+}
